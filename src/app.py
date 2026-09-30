@@ -36,15 +36,6 @@ def handle_invalid_usage(error):
 def sitemap():
     return generate_sitemap(app)
 
-@app.route('/user', methods=['GET'])
-def handle_hello():
-
-    response_body = {
-        "msg": "Hello, this is your GET /user response "
-    }
-
-    return jsonify(response_body), 200
-
 # [GET] /people - Listar todos los personajes
 @app.route('/people', methods=['GET'])
 def get_all_people():
@@ -171,6 +162,79 @@ def delete_favorite_planet(planet_id):
     db.session.delete(favorite)
     db.session.commit()
     return jsonify({"msg": "Planeta favorito eliminado exitosamente"}), 200
+
+
+# [POST] /people - Crear personaje
+@app.route('/people', methods=['POST'])
+def create_person():
+    body = request.get_json(silent=True) or {}
+    if not body.get("name"):
+        return jsonify({"msg": "El campo 'name' es obligatorio"}), 400
+    person = People(name=body["name"], gender=body.get("gender"))
+    db.session.add(person)
+    db.session.commit()
+    return jsonify(person.serialize()), 201
+
+
+# [PUT] /people/<int:people_id> - Actualizar personaje
+@app.route('/people/<int:people_id>', methods=['PUT'])
+def update_person(people_id):
+    person = db.session.get(People, people_id)
+    if person is None:
+        return jsonify({"msg": f"Personaje con id {people_id} no encontrado"}), 404
+    body = request.get_json(silent=True) or {}
+    person.name = body.get("name", person.name)
+    person.gender = body.get("gender", person.gender)
+    db.session.commit()
+    return jsonify(person.serialize()), 200
+
+
+# [DELETE] /people/<int:people_id> - Eliminar personaje
+@app.route('/people/<int:people_id>', methods=['DELETE'])
+def delete_person(people_id):
+    person = db.session.get(People, people_id)
+    if person is None:
+        return jsonify({"msg": f"Personaje con id {people_id} no encontrado"}), 404
+    db.session.execute(db.delete(FavoritePeople).filter_by(people_id=people_id))
+    db.session.delete(person)
+    db.session.commit()
+    return jsonify({"msg": "Personaje eliminado exitosamente"}), 200
+
+
+# [POST] /planets - Crear planeta
+@app.route('/planets', methods=['POST'])
+def create_planet():
+    body = request.get_json(silent=True) or {}
+    if not body.get("name"):
+        return jsonify({"msg": "El campo 'name' es obligatorio"}), 400
+    planet = Planet(name=body["name"])
+    db.session.add(planet)
+    db.session.commit()
+    return jsonify(planet.serialize()), 201
+
+
+# [PUT] /planets/<int:planet_id> - Actualizar planeta
+@app.route('/planets/<int:planet_id>', methods=['PUT'])
+def update_planet(planet_id):
+    planet = db.session.get(Planet, planet_id)
+    if planet is None:
+        return jsonify({"msg": f"Planeta con id {planet_id} no encontrado"}), 404
+    body = request.get_json(silent=True) or {}
+    planet.name = body.get("name", planet.name)
+    db.session.commit()
+    return jsonify(planet.serialize()), 200
+
+
+# [DELETE] /planets/<int:planet_id> - Eliminar planeta
+@app.route('/planets/<int:planet_id>', methods=['DELETE'])
+def delete_planet(planet_id):
+    planet = db.session.get(Planet, planet_id)
+    if planet is None:
+        return jsonify({"msg": f"Planeta con id {planet_id} no encontrado"}), 404
+    db.session.execute(db.delete(FavoritePlanet).filter_by(planet_id=planet_id))
+    db.session.delete(planet)
+    db.session.commit()
+    return jsonify({"msg": "Planeta eliminado exitosamente"}), 200
 
 
 # this only runs if `$ python src/app.py` is executed
